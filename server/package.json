@@ -1,0 +1,20 @@
+{
+  "name": "beat-stream-server",
+  "version": "1.0.0",
+  "author": "https://github.com/th92rodr",
+  "license": "BSD-3-Clause",
+  "description": "",
+  "main": "src/index.ts",
+  "engines": {
+    "node": "20.18.0",
+    "npm": "10.8.2"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.7.5",
+    "tsx": "4.19.1",
+    "typescript": "5.6.3"
+  }
+}

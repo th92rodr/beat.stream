@@ -1,0 +1,6 @@
+# Ignore npm dependency directory
+node_modules/
+
+# Ignore .env files
+.env*
+!.env.example
