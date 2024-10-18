@@ -3,9 +3,10 @@ import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
-import { ZodError } from 'zod'
+import { ZodError, z } from 'zod'
 
 import type { IRestServer } from '@/channels/rest/IRestServer'
+import { UsersController } from '@/channels/rest/fastify/controllers/UsersController'
 import { ClientError } from '@/client-error'
 import { env } from '@/env'
 
@@ -13,6 +14,8 @@ type FastifyErrorHandler = FastifyInstance['errorHandler']
 
 export class FastifyRestServer implements IRestServer {
   private server: FastifyInstance
+
+  private usersController: UsersController
 
   constructor() {
     this.server = Fastify({
@@ -24,6 +27,8 @@ export class FastifyRestServer implements IRestServer {
         // file: './server.log',
       },
     })
+
+    this.usersController = new UsersController()
   }
 
   public async start() {
@@ -33,7 +38,7 @@ export class FastifyRestServer implements IRestServer {
     }
 
     this.registerPlugins()
-    await this.registerRoutes()
+    this.registerRoutes()
 
     try {
       await this.server.listen({ host: env.HOST, port: env.PORT })
@@ -150,8 +155,53 @@ export class FastifyRestServer implements IRestServer {
       })
     }
 
+    console.error('Server error:', error)
+
     return reply.status(500).send({ message: 'Internal server error' })
   }
 
-  private async registerRoutes() {}
+  private registerRoutes() {
+    this.server.route({
+      method: 'GET',
+      url: '/users',
+      handler: this.usersController.read,
+    })
+
+    this.server.route({
+      method: 'POST',
+      url: '/users',
+      handler: this.usersController.create,
+      schema: {
+        body: z.object({
+          email: z.string().email().max(50),
+          username: z.string().min(3).max(50),
+          password: z.string().min(10).max(100),
+        }),
+        response: z.object({
+          id: z.string(),
+        }),
+      },
+    })
+
+    this.server.route({
+      method: 'PATCH',
+      url: '/users',
+      handler: this.usersController.update,
+      schema: {
+        body: z.object({
+          fullName: z.string().max(50).optional(),
+          country: z.string().max(20).optional(),
+          birthdate: z.date().optional(), // maybe use string
+          languagePreference: z.string().max(2).optional(),
+          timezone: z.string().max(20).optional(),
+        }),
+      },
+    })
+
+    this.server.route({
+      method: 'DELETE',
+      url: '/users',
+      handler: this.usersController.delete,
+    })
+  }
 }
