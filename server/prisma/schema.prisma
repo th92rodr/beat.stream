@@ -6,3 +6,380 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// - - - -
+
+model User {
+  // Base Fields
+  id            String        @id @default(uuid())
+  email         String        @unique @db.VarChar(50)
+  emailVerified Boolean       @default(false) @map("email_verified")
+  role          UserRole      @default(USER)
+  accountStatus AccountStatus @default(ACTIVE) @map("account_status")
+  authProvider  AuthProvider  @map("auth_provider")
+
+  // Email Auth Provider Fields
+  username     String? @unique @db.VarChar(50)
+  passwordHash String? @map("password_hash") @db.VarChar(100)
+
+  // Github Auth Provider Fields
+  githubId       Int?    @unique @map("github_id")
+  githubUsername String? @unique @map("github_username") @db.VarChar(50)
+
+  // User Config Optional Fields
+  fullName           String?   @map("full_name") @db.VarChar(50)
+  country            String?   @db.VarChar(20)
+  birthdate          DateTime?
+  profilePictureUrl  String?   @map("profile_picture_url")
+  languagePreference String    @default("en") @map("language_preference") @db.VarChar(2)
+  timezone           String    @default("Etc/UCT") @db.VarChar(20) // IANA Timezone Format
+
+  // User Management / Security Fields
+  lastPasswordResetAt DateTime? @map("last_password_reset_at")
+  lastLogin           DateTime? @map("last_login")
+  lastLoginIp         String?   @map("last_login_ip")
+  lastLoginLocation   String?   @map("last_login_location")
+
+  // Database Record Dates
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  follows          Follow[] // One user can follow many artists
+  favorites        Favorite[] // One user can favorite many songs
+  streams          Stream[] // One user can stream many songs
+  playlists        Playlist[] // One user can have many playlists
+  followsPlaylists FollowPlaylist[] // One user can follow many playlists
+  comments         Comment[] // One user can comment many songs and playlists
+
+  @@map("users")
+}
+
+enum AuthProvider {
+  EMAIL
+  GITHUB
+
+  @@map("auth_providers")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+
+  @@map("account_status")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("user_roles")
+}
+
+// - - - -
+
+model Song {
+  // Base Fields
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(50)
+  duration    Int
+  fileUrl     String   @map("file_url")
+  releaseDate DateTime @map("release_date")
+  genre       String   @db.VarChar(20)
+  language    String   @db.VarChar(2)
+  streamCount Int      @default(0) @map("stream_count")
+
+  // Additional Fields
+  bitrate     Int?
+  label       String? @db.VarChar(50)
+  lyrics      String? @db.VarChar(10000)
+  downloadUrl String? @map("download_url")
+
+  // Foreign Key
+  artist   Artist @relation(fields: [artistId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  artistId Int    @map("artist_id")
+
+  // TODO
+  // isSingle Boolean @default(false)
+
+  // Fields required only if song belongs to an album
+  album       Album? @relation(fields: [albumId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  albumId     Int?   @map("album_id")
+  trackNumber Int?   @map("track_number")
+
+  // Fields required only if song does not belong to an album
+  coverImageUrl String? @map("cover_image_url")
+
+  // Database Record Dates
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  favorites Favorite[] // One song can be favorited by many users
+  streams   Stream[] // One song can be streamed by many users
+  playlists PlaylistSong[] // One song can be added in many playlists
+  comments  Comment[] // One song can be commented by many users
+
+  @@map("songs")
+}
+
+model Album {
+  // Base Fields
+  id            Int       @id @default(autoincrement())
+  title         String    @db.VarChar(50)
+  releaseDate   DateTime  @map("release_date")
+  coverImageUrl String    @map("cover_image_url")
+  totalTracks   Int       @map("total_tracks")
+  totalDuration Int       @map("total_duration")
+  albumType     AlbumType @map("album_type")
+
+  // Additional Fields
+  label String? @db.VarChar(50)
+
+  // Foreign Key
+  artist   Artist @relation(fields: [artistId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  artistId Int    @map("artist_id")
+
+  // Database Record Dates
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  songs Song[] // One album has many songs
+
+  @@map("albums")
+}
+
+model Artist {
+  // Base Fields
+  id                Int        @id @default(autoincrement())
+  name              String     @db.VarChar(50)
+  genre             String     @db.VarChar(20)
+  profilePictureUrl String     @map("profile_picture_url")
+  artistType        ArtistType @map("artist_type")
+
+  // Additional Fields
+  bio             String?   @db.VarChar(1000)
+  countryOfOrigin String?   @map("country_of_origin") @db.VarChar(20)
+  formedIn        DateTime? @map("formed_in")
+  socialMedia     Json?     @map("social_media")
+
+  // Database Record Dates
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  songs     Song[] // One artist has many songs
+  albums    Album[] // One artist has many albums
+  followers Follow[] // One artist can have many followers
+
+  @@map("artists")
+}
+
+enum AlbumType {
+  STUDIO
+  LIVE
+
+  @@map("album_types")
+}
+
+enum ArtistType {
+  SOLO
+  BAND
+
+  @@map("artist_types")
+}
+
+// - - - -
+
+model Follow {
+  // Foreign Keys
+  artist   Artist @relation(fields: [artistId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  artistId Int    @map("artist_id")
+
+  user   User   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userId String @map("user_id")
+
+  // Database Record Date
+  followedAt DateTime @default(now()) @map("followed_at")
+
+  @@id([userId, artistId]) // Composite primary key to ensure unique follows
+  @@map("follows")
+}
+
+model Favorite {
+  // Foreign Keys
+  song   Song @relation(fields: [songId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  songId Int  @map("song_id")
+
+  user   User   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userId String @map("user_id")
+
+  // Database Record Date
+  favoritedAt DateTime @default(now()) @map("favorited_at")
+
+  @@id([userId, songId]) // Composite primary key to ensure unique favorites
+  @@map("favorites")
+}
+
+model Stream {
+  // Base Fields
+  id       Int @id @default(autoincrement())
+  duration Int
+
+  // Additional Fields
+  deviceType DeviceType? @map("device_type")
+  location   String?
+  ipAddress  String?     @map("ip_address")
+
+  // Foreign Keys
+  song   Song @relation(fields: [songId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  songId Int  @map("song_id")
+
+  user   User   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userId String @map("user_id")
+
+  // Database Record Date
+  streamedAt DateTime @default(now()) @map("streamed_at")
+
+  @@map("streams")
+}
+
+enum DeviceType {
+  MOBILE
+  DESKTOP
+  TABLET
+  SMART_TV
+
+  @@map("device_types")
+}
+
+// - - - -
+
+model Playlist {
+  // Base Fields
+  id              Int      @id @default(autoincrement())
+  title           String   @db.VarChar(50)
+  totalDuration   Int      @map("total_duration")
+  isPublic        Boolean  @default(true) @map("is_public")
+  isAutoGenerated Boolean  @default(false) @map("is_auto_generated")
+  lastUpdatedAt   DateTime @default(now()) @map("last_updated_at") // To track updates on the playlist's songs (addition, deletion or reordering)
+
+  // Additional Fields
+  description   String? @db.VarChar(250)
+  coverImageUrl String? @map("cover_image_url")
+
+  // Foreign Key
+  user   User   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userId String @map("user_id")
+
+  // Database Record Dates
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  songs     PlaylistSong[] // One playlist can have many songs
+  tags      PlaylistTag[] // One playlist can have many tags
+  followers FollowPlaylist[] // One playlist can have many followers
+  comments  Comment[] // One playlist can be commented by many users
+
+  @@map("playlists")
+}
+
+model PlaylistSong {
+  // Base Fields
+  index Int // Field to indicate the order of the song in the playlist
+
+  // Foreign Keys
+  song   Song @relation(fields: [songId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  songId Int  @map("song_id")
+
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  playlistId Int      @map("playlist_id")
+
+  // Database Record Date
+  insertedAt DateTime @default(now()) @map("inserted_at")
+
+  @@id([playlistId, songId]) // Composite primary key to ensure unique song in each playlist
+  @@map("playlist_songs")
+}
+
+model Tag {
+  // Base Fields
+  id            Int         @id @default(autoincrement())
+  name          String      @unique @db.VarChar(20)
+  category      TagCategory
+  tagUsageCount Int         @default(0) @map("tag_usage_count")
+
+  // Database Record Dates
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  playlists PlaylistTag[] // One tag can be used in many playlists
+
+  @@map("tags")
+}
+
+model PlaylistTag {
+  // Foreign Keys
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  playlistId Int      @map("playlist_id")
+
+  tag   Tag @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId Int @map("tag_id")
+
+  // Database Record Date
+  taggedAt DateTime @default(now()) @map("tagged_at")
+
+  @@id([playlistId, tagId]) // Composite primary key to ensure unique tag in each playlist
+  @@map("playlist_tags")
+}
+
+enum TagCategory {
+  GENRE
+  MOOD
+  ACTIVITY
+  CUSTOM
+
+  @@map("tag_categories")
+}
+
+model FollowPlaylist {
+  // Foreign Keys
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  playlistId Int      @map("playlist_id")
+
+  user   User   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userId String @map("user_id")
+
+  // Database Record Date
+  followedAt DateTime @default(now()) @map("followed_at")
+
+  @@id([userId, playlistId]) // Composite primary key to ensure a user can only follow a playlist once
+  @@map("follows_playlists")
+}
+
+// - - - -
+
+model Comment {
+  // Base Fields
+  id      Int    @id @default(autoincrement())
+  content String @db.VarChar(250)
+
+  // Foreign Key
+  user   User   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: NoAction)
+  userId String @map("user_id")
+
+  playlist   Playlist? @relation(fields: [playlistId], references: [id], onUpdate: Cascade, onDelete: NoAction)
+  playlistId Int?      @map("playlist_id")
+
+  song   Song? @relation(fields: [songId], references: [id], onUpdate: Cascade, onDelete: NoAction)
+  songId Int?  @map("song_id")
+
+  // Database Record Dates
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("comments")
+}
