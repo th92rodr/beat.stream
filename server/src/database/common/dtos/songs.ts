@@ -90,7 +90,7 @@ export interface DTOUpdateAlbum {
 export interface DTOSimpleSong {
   id: number
   artistId: number
-  albumId: number
+  albumId?: number
   title: string
 }
 

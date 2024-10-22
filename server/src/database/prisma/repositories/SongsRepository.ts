@@ -1,9 +1,11 @@
-import type { PrismaClient, Song } from '@prisma/client'
+import type { PrismaClient } from '@prisma/client'
 
+import { ClientError } from '@/client-error'
 import type {
   DTOCreateSong,
   DTODelete,
   DTOFullSong,
+  DTOSimpleSong,
   DTOUpdateSong,
 } from '@/database/common/dtos/songs'
 import type { ISongsRepository } from '@/database/common/repositories/ISongsRepository'
@@ -16,30 +18,9 @@ export class SongsRepository implements ISongsRepository {
     this.db = db
   }
 
-  public async findById(id: number): Promise<Partial<Song> | null> {
-    return this.db.song.findUnique({
+  public async findById(id: number): Promise<DTOFullSong> {
+    const song = await this.db.song.findUnique({
       where: { id },
-      select: {},
-    })
-  }
-
-  public async listSongsByAlbum(
-    albumId: number,
-    page = DEFAULT_PAGE_INDEX,
-    limit = DEFAULT_PAGE_SIZE
-  ): Promise<DTOFullSong[]> {
-    const skip = (page - 1) * limit
-
-    const songs = await this.db.song.findMany({
-      skip,
-      take: limit,
-      where: {
-        albumId,
-        deletedAt: null,
-      },
-      orderBy: {
-        trackNumber: 'asc',
-      },
       select: {
         id: true,
         artistId: true,
@@ -60,24 +41,61 @@ export class SongsRepository implements ISongsRepository {
       },
     })
 
+    if (!song) {
+      throw new ClientError('Song does not exist.')
+    }
+
+    return {
+      id: song.id,
+      artistId: song.artistId,
+      albumId: song.albumId || undefined,
+      title: song.title,
+      duration: song.duration,
+      fileUrl: song.fileUrl,
+      releaseDate: song.releaseDate,
+      genre: song.genre,
+      language: song.language,
+      streamCount: song.streamCount,
+      bitrate: song.bitrate || undefined,
+      label: song.label || undefined,
+      lyrics: song.lyrics || undefined,
+      downloadUrl: song.downloadUrl || undefined,
+      trackNumber: song.trackNumber || undefined,
+      coverImageUrl: song.coverImageUrl || undefined,
+    }
+  }
+
+  public async listSongsByAlbum(
+    albumId: number,
+    page = DEFAULT_PAGE_INDEX,
+    limit = DEFAULT_PAGE_SIZE
+  ): Promise<DTOSimpleSong[]> {
+    const skip = (page - 1) * limit
+
+    const songs = await this.db.song.findMany({
+      skip,
+      take: limit,
+      where: {
+        albumId,
+        deletedAt: null,
+      },
+      orderBy: {
+        trackNumber: 'asc',
+      },
+      select: {
+        id: true,
+        artistId: true,
+        albumId: true,
+        title: true,
+      },
+    })
+
     return songs.map(song => {
       return {
         id: song.id,
         artistId: song.artistId,
         albumId: song.albumId || undefined,
         title: song.title,
-        duration: song.duration,
-        fileUrl: song.fileUrl,
-        releaseDate: song.releaseDate,
-        genre: song.genre,
-        language: song.language,
-        streamCount: song.streamCount,
-        bitrate: song.bitrate || undefined,
-        label: song.label || undefined,
-        lyrics: song.lyrics || undefined,
-        downloadUrl: song.downloadUrl || undefined,
-        trackNumber: song.trackNumber || undefined,
-        coverImageUrl: song.coverImageUrl || undefined,
       }
     })
   }
@@ -125,7 +143,6 @@ export class SongsRepository implements ISongsRepository {
     await this.db.song.update({
       where: { id },
       data,
-      select: {},
     })
   }
 
@@ -135,7 +152,6 @@ export class SongsRepository implements ISongsRepository {
       data: {
         deletedAt: date,
       },
-      select: {},
     })
   }
 }

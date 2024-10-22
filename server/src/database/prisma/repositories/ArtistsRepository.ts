@@ -1,9 +1,11 @@
-import { type Artist, ArtistType, type PrismaClient } from '@prisma/client'
+import { ArtistType, type PrismaClient } from '@prisma/client'
 
+import { ClientError } from '@/client-error'
 import type {
   DTOCreateArtist,
   DTODelete,
   DTOFullArtist,
+  DTOSimpleArtist,
   DTOUpdateArtist,
 } from '@/database/common/dtos/songs'
 import type { IArtistsRepository } from '@/database/common/repositories/IArtistsRepository'
@@ -16,17 +18,41 @@ export class ArtistsRepository implements IArtistsRepository {
     this.db = db
   }
 
-  public async findById(id: number): Promise<Partial<Artist> | null> {
-    return this.db.artist.findUnique({
+  public async findById(id: number): Promise<DTOFullArtist> {
+    const artist = await this.db.artist.findUnique({
       where: { id },
-      select: {},
+      select: {
+        id: true,
+        name: true,
+        genre: true,
+        profilePictureUrl: true,
+        artistType: true,
+        bio: true,
+        countryOfOrigin: true,
+        formedIn: true,
+      },
     })
+
+    if (!artist) {
+      throw new ClientError('Artist does not exist.')
+    }
+
+    return {
+      id: artist.id,
+      name: artist.name,
+      genre: artist.genre,
+      profilePictureUrl: artist.profilePictureUrl,
+      artistType: artist.artistType,
+      bio: artist.bio || undefined,
+      countryOfOrigin: artist.countryOfOrigin || undefined,
+      formedIn: artist.formedIn || undefined,
+    }
   }
 
   public async listArtists(
     page = DEFAULT_PAGE_INDEX,
     limit = DEFAULT_PAGE_SIZE
-  ): Promise<DTOFullArtist[]> {
+  ): Promise<DTOSimpleArtist[]> {
     const skip = (page - 1) * limit
 
     const artists = await this.db.artist.findMany({
@@ -41,12 +67,6 @@ export class ArtistsRepository implements IArtistsRepository {
       select: {
         id: true,
         name: true,
-        genre: true,
-        profilePictureUrl: true,
-        artistType: true,
-        bio: true,
-        countryOfOrigin: true,
-        formedIn: true,
       },
     })
 
@@ -54,12 +74,6 @@ export class ArtistsRepository implements IArtistsRepository {
       return {
         id: artist.id,
         name: artist.name,
-        genre: artist.genre,
-        profilePictureUrl: artist.profilePictureUrl,
-        artistType: artist.artistType,
-        bio: artist.bio || undefined,
-        countryOfOrigin: artist.countryOfOrigin || undefined,
-        formedIn: artist.formedIn || undefined,
       }
     })
   }
@@ -93,7 +107,6 @@ export class ArtistsRepository implements IArtistsRepository {
     await this.db.artist.update({
       where: { id },
       data,
-      select: {},
     })
   }
 
@@ -103,7 +116,6 @@ export class ArtistsRepository implements IArtistsRepository {
       data: {
         deletedAt: date,
       },
-      select: {},
     })
   }
 }
@@ -114,8 +126,12 @@ const ArtistTypeMap = new Map<string, ArtistType>([
 ])
 
 const ArtistTypeMapProxy = new Proxy(ArtistTypeMap, {
-  get(map, key): ArtistType {
-    const keyStr = key.toString()
-    return <ArtistType>(map.has(keyStr) ? map.get(keyStr) : map.get('BAND'))
+  get(map, prop: string) {
+    if (typeof map.get === 'function' && prop === 'get') {
+      return (key: string) => {
+        return map.has(key) ? map.get(key) : map.get('BAND')
+      }
+    }
+    return map[prop as keyof Map<string, ArtistType>]
   },
 })
