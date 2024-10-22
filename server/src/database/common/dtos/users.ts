@@ -1,3 +1,22 @@
+export interface DTOFullUser {
+  id: string
+  email: string
+  emailVerified: boolean
+  role: string
+  accountStatus: string
+  authProvider: string
+  username?: string
+  passwordHash?: string
+  githubId?: number
+  githubUsername?: string
+  fullName?: string
+  country?: string
+  birthdate?: Date
+  profilePictureUrl?: string
+  languagePreference?: string
+  timezone?: string
+}
+
 export interface DTOCreateUser {
   email: string
   authProvider: string
@@ -9,6 +28,7 @@ export interface DTOCreateUser {
 
 export interface DTOUpdateUserAdditionalInfo {
   id: string
+  emailVerified?: boolean
   fullName?: string
   country?: string
   birthdate?: Date

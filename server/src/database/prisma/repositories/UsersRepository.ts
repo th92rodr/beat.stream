@@ -1,8 +1,10 @@
-import { AuthProvider, type PrismaClient, type User } from '@prisma/client'
+import { AuthProvider, type PrismaClient } from '@prisma/client'
 
+import { ClientError } from '@/client-error'
 import type {
   DTOCreateUser,
   DTODeleteUser,
+  DTOFullUser,
   DTOUpdateUserAdditionalInfo,
   DTOUpdateUserLastLoginInfo,
 } from '@/database/common/dtos/users'
@@ -15,31 +17,57 @@ export class UsersRepository implements IUsersRepository {
     this.db = db
   }
 
-  public async findById(id: string): Promise<Partial<User> | null> {
-    return this.db.user.findUnique({
+  public async findById(id: string): Promise<DTOFullUser> {
+    const user = await this.db.user.findUnique({
       where: { id },
-      select: {},
+      select: {
+        id: true,
+        email: true,
+        emailVerified: true,
+        role: true,
+        accountStatus: true,
+        authProvider: true,
+        username: true,
+        passwordHash: true,
+        githubId: true,
+        githubUsername: true,
+        fullName: true,
+        country: true,
+        birthdate: true,
+        profilePictureUrl: true,
+        languagePreference: true,
+        timezone: true,
+      },
     })
-  }
 
-  public async findByEmail(email: string): Promise<Partial<User> | null> {
-    return this.db.user.findUnique({
-      where: { email },
-      select: {},
-    })
-  }
+    if (!user) {
+      throw new ClientError('User does not exist.')
+    }
 
-  public async findByUsername(username: string): Promise<Partial<User> | null> {
-    return this.db.user.findUnique({
-      where: { username },
-      select: {},
-    })
+    return {
+      id: user.id,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      role: user.role,
+      accountStatus: user.accountStatus,
+      authProvider: user.authProvider,
+      username: user.username || undefined,
+      passwordHash: user.passwordHash || undefined,
+      githubId: user.githubId || undefined,
+      githubUsername: user.githubUsername || undefined,
+      fullName: user.fullName || undefined,
+      country: user.country || undefined,
+      birthdate: user.birthdate || undefined,
+      profilePictureUrl: user.profilePictureUrl || undefined,
+      languagePreference: user.languagePreference || undefined,
+      timezone: user.timezone || undefined,
+    }
   }
 
   public async check(id: string): Promise<boolean> {
     const user = await this.db.user.findUnique({
       where: { id },
-      select: {},
+      select: { id: true },
     })
 
     if (user) {
@@ -52,7 +80,7 @@ export class UsersRepository implements IUsersRepository {
   public async checkByEmailOrUsername(email: string, username: string): Promise<boolean> {
     const user = await this.db.user.findFirst({
       where: { OR: [{ email }, { username }] },
-      select: {},
+      select: { id: true },
     })
 
     if (user) {
@@ -73,7 +101,8 @@ export class UsersRepository implements IUsersRepository {
     const { id } = await this.db.user.create({
       data: {
         email,
-        authProvider: <AuthProvider>AuthProviderMapProxy.get(authProvider),
+        // authProvider: <AuthProvider>AuthProviderMapProxy.get(authProvider),
+        authProvider: <AuthProvider>AuthProviderMap.get(authProvider),
         username,
         passwordHash,
         githubId,
@@ -89,7 +118,6 @@ export class UsersRepository implements IUsersRepository {
     await this.db.user.update({
       where: { id },
       data,
-      select: {},
     })
   }
 
@@ -106,7 +134,6 @@ export class UsersRepository implements IUsersRepository {
         lastLoginIp: ip,
         lastLoginLocation: location,
       },
-      select: {},
     })
   }
 
@@ -117,7 +144,6 @@ export class UsersRepository implements IUsersRepository {
         accountStatus: 'DELETED',
         deletedAt: date,
       },
-      select: {},
     })
   }
 }

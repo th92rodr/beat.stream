@@ -1,16 +1,13 @@
-import type { User } from '@prisma/client'
-
 import type {
   DTOCreateUser,
   DTODeleteUser,
+  DTOFullUser,
   DTOUpdateUserAdditionalInfo,
   DTOUpdateUserLastLoginInfo,
 } from '@/database/common/dtos/users'
 
 export interface IUsersRepository {
-  findById(id: string): Promise<Partial<User> | null>
-  findByEmail(email: string): Promise<Partial<User> | null>
-  findByUsername(username: string): Promise<Partial<User> | null>
+  findById(id: string): Promise<DTOFullUser>
 
   check(id: string): Promise<boolean>
   checkByEmailOrUsername(email: string, username: string): Promise<boolean>
