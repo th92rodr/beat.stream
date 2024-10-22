@@ -15,6 +15,12 @@ export interface DTOFullUser {
   profilePictureUrl?: string
   languagePreference?: string
   timezone?: string
+  lastPasswordResetAt?: Date
+  lastLogin?: Date
+  lastLoginIp?: string
+  lastLoginLocation?: string
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface DTOCreateUser {

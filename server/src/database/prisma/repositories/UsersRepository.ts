@@ -37,6 +37,12 @@ export class UsersRepository implements IUsersRepository {
         profilePictureUrl: true,
         languagePreference: true,
         timezone: true,
+        lastPasswordResetAt: true,
+        lastLogin: true,
+        lastLoginIp: true,
+        lastLoginLocation: true,
+        createdAt: true,
+        updatedAt: true,
       },
     })
 
@@ -61,6 +67,12 @@ export class UsersRepository implements IUsersRepository {
       profilePictureUrl: user.profilePictureUrl || undefined,
       languagePreference: user.languagePreference || undefined,
       timezone: user.timezone || undefined,
+      lastPasswordResetAt: user.lastPasswordResetAt || undefined,
+      lastLogin: user.lastLogin || undefined,
+      lastLoginIp: user.lastLoginIp || undefined,
+      lastLoginLocation: user.lastLoginLocation || undefined,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     }
   }
 
@@ -101,8 +113,7 @@ export class UsersRepository implements IUsersRepository {
     const { id } = await this.db.user.create({
       data: {
         email,
-        // authProvider: <AuthProvider>AuthProviderMapProxy.get(authProvider),
-        authProvider: <AuthProvider>AuthProviderMap.get(authProvider),
+        authProvider: <AuthProvider>AuthProviderMapProxy.get(authProvider),
         username,
         passwordHash,
         githubId,
@@ -154,8 +165,12 @@ const AuthProviderMap = new Map<string, AuthProvider>([
 ])
 
 const AuthProviderMapProxy = new Proxy(AuthProviderMap, {
-  get(map, key): AuthProvider {
-    const keyStr = key.toString()
-    return <AuthProvider>(map.has(keyStr) ? map.get(keyStr) : map.get('EMAIL'))
+  get(map, prop: string) {
+    if (typeof map.get === 'function' && prop === 'get') {
+      return (key: string) => {
+        return map.has(key) ? map.get(key) : map.get('EMAIL')
+      }
+    }
+    return map[prop as keyof Map<string, AuthProvider>]
   },
 })
