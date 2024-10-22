@@ -1,6 +1,7 @@
 import { AlbumType, type PrismaClient } from '@prisma/client'
 
 import { ClientError } from '@/client-error'
+import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/database/common/constants'
 import type {
   DTOCreateAlbum,
   DTODelete,
@@ -9,7 +10,6 @@ import type {
   DTOUpdateAlbum,
 } from '@/database/common/dtos/songs'
 import type { IAlbumsRepository } from '@/database/common/repositories/IAlbumsRepository'
-import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/database/prisma/constants'
 
 export class AlbumsRepository implements IAlbumsRepository {
   private db: PrismaClient

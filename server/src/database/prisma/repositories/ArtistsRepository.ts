@@ -1,6 +1,7 @@
 import { ArtistType, type PrismaClient } from '@prisma/client'
 
 import { ClientError } from '@/client-error'
+import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/database/common/constants'
 import type {
   DTOCreateArtist,
   DTODelete,
@@ -9,7 +10,6 @@ import type {
   DTOUpdateArtist,
 } from '@/database/common/dtos/songs'
 import type { IArtistsRepository } from '@/database/common/repositories/IArtistsRepository'
-import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/database/prisma/constants'
 
 export class ArtistsRepository implements IArtistsRepository {
   private db: PrismaClient

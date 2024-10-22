@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 
 import { ClientError } from '@/client-error'
+import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/database/common/constants'
 import type {
   DTOCreateSong,
   DTODelete,
@@ -9,7 +10,6 @@ import type {
   DTOUpdateSong,
 } from '@/database/common/dtos/songs'
 import type { ISongsRepository } from '@/database/common/repositories/ISongsRepository'
-import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/database/prisma/constants'
 
 export class SongsRepository implements ISongsRepository {
   private db: PrismaClient
